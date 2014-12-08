@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.DijkstraShortestPath;
@@ -14,13 +16,14 @@ public class GraphSolver {
 
     public static void main(String[] argv) {
 
-        System.out.println("Fuck me! I'm famous");
+        System.out.println("I'm famous");
 
         NetworkGraph<String, NetworkLink> graph = createStringGraph();
-        Transfer t5 = new Transfer("t5", "a", "c", 40, 5, 0);
+        Transfer t5 = new Transfer("t5", "a", "c", 250, 5, 0);
         int bmin = t5.minimumSlotsRequired();
+        System.out.println("bmin required: " + bmin);
 
-        DijkstraShortestPath<String, NetworkLink> freeRoute = graph.getCapacitadedShortestPath("a", "c", 5);
+        DijkstraShortestPath<String, NetworkLink> freeRoute = graph.getCapacitadedShortestPath("a", "c", bmin);
 
         if (freeRoute.getPath() != null) {
             System.out.println("Path for this transfer " + freeRoute.getPath());
@@ -28,30 +31,85 @@ public class GraphSolver {
         }
 
         List<GraphPath<String, NetworkLink>> paths = graph.getKShortestPaths("a", "c");
+        HashMap<Transfer, Integer> solution = null;
 
         System.out.println("K Shortest Paths: " + paths);
         for (GraphPath<String, NetworkLink> path : paths) {
             System.out.println("==========================");
             System.out.println("Taking path: " + path);
-            Set<HashMap<Transfer, Integer>> partialSolution = new HashSet<HashMap<Transfer, Integer>>();
+            HashMap<Transfer, Integer> partialSolution = new HashMap<Transfer, Integer>();
 
             List<NetworkLink> edgeList = path.getEdgeList();
             List<NetworkLink> edgeListRemaining = new ArrayList(edgeList);
             //Collections.copy(edgeListRemaining, edgeList);
+            boolean noSolutionForThisPath = false;
 
             for (NetworkLink link : edgeList) {
+                int squeezedValue = 0;
                 System.out.println("Edge List:  " + edgeListRemaining);
                 if (link.getFreeSlots() < bmin) {
-                    // quality function here
-                    Set<HashMap<Transfer, Integer>> listOfTransfer = generateCandidateSet(edgeListRemaining, partialSolution, bmin);
+                    // 1. Generate RCL here 
+                    // 2. then select a transfer at random
+                    // 3. Check if transfer fulfills demand, if not select another at random
+                    // 4. If transfers can be found which fulfils demand add it to the partial solution
+                    // 5. Otherwise there is no solution in this path, try next path
+                    HashMap<Transfer, Integer> tempRCL = generateRCL(edgeListRemaining, partialSolution, bmin);
+                    List<Transfer> transferSetInThisLink = new ArrayList<Transfer>();
+                    List<Transfer> keysAsArray = new ArrayList<Transfer>(tempRCL.keySet());
+                    
+                                System.out.print("RCL is is: {");
+
+            for (Map.Entry<Transfer, Integer> entrySet : tempRCL.entrySet()) {
+                Transfer key = entrySet.getKey();
+                Integer value = entrySet.getValue();
+                System.out.print(" ("+ key.getName() + ", " + value + ")");
+            }
+            
+            System.out.println("}");
+        
+
+                    Random r = new Random();
+
+                    while (!keysAsArray.isEmpty() && squeezedValue < bmin) {
+
+                        Transfer luckyTransfer = keysAsArray.get(r.nextInt(keysAsArray.size()));
+                        squeezedValue += luckyTransfer.numberOfSqueezableSlots();
+                        keysAsArray.remove(luckyTransfer);
+                        transferSetInThisLink.add(luckyTransfer);
+                    }
+
+                    if (squeezedValue >= bmin) {
+                        for (Transfer t : transferSetInThisLink) {
+                            partialSolution.put(t, t.numberOfSqueezableSlots());
+                        }
+                    } else {
+                        noSolutionForThisPath = true;
+                        break;
+                    }
 
                 }
 
                 edgeListRemaining.remove(link);
             }
+
+            if (!noSolutionForThisPath) {
+                //found solution :D
+                solution = partialSolution;
+                break;
+            }
         }
 
-        //System.out.println(graph.toString());
+        if (solution != null) {
+            System.out.print("Solution is: {");
+
+            for (Map.Entry<Transfer, Integer> entrySet : solution.entrySet()) {
+                Transfer key = entrySet.getKey();
+                Integer value = entrySet.getValue();
+                System.out.print(" ("+ key.getName() + ", " + value + ")");
+            }
+            
+            System.out.println("}");
+        }
     }
 
     private static NetworkGraph<String, NetworkLink> createStringGraph() {
@@ -101,22 +159,32 @@ public class GraphSolver {
         return g;
     }
 
-    private static Set<HashMap<Transfer, Integer>> generateCandidateSet(List<NetworkLink> edgeListRemaining, Set<HashMap<Transfer, Integer>> partialSolution, int bmin) {
-        Set<HashMap<Transfer, Integer>> transferSet = new HashSet<HashMap<Transfer, Integer>>();
+    private static HashMap<Transfer, Integer> generateRCL(List<NetworkLink> edgeListRemaining, HashMap<Transfer, Integer> partialSolution, int bmin) {
+
+        HashMap<Transfer, Integer> transferSet = new HashMap<Transfer, Integer>();
 
         NetworkLink currentLink = edgeListRemaining.get(0);
+
         ArrayList<Transfer> transferList = currentLink.getTransferList();
 
         for (Transfer transfer : transferList) {
-//            if (transfer.numberOfSqueezableSlots() > 0) {
+
+            if (partialSolution.containsKey(transfer)) {
+                continue;
+            }
+
             int numberOfAppearancesInTheRoute = getNumberOfAppearancesInTheRoute(edgeListRemaining, transfer);
-            HashMap<Transfer, Integer> transferEntry = new HashMap<Transfer, Integer>();
-            
-            transferEntry.put(transfer, transfer.numberOfSqueezableSlots() * numberOfAppearancesInTheRoute); 
-            
-            transferSet.add(transferEntry);
-        
-            System.out.println("Select this transfer, we have only one chance.." + transfer.getName());
+
+            //HashMap<Transfer, Integer> transferEntry = new HashMap<Transfer, Integer>();
+            transferSet.put(transfer, transfer.numberOfSqueezableSlots() * numberOfAppearancesInTheRoute);
+
+            //System.out.println("Select this transfer, we have only one chance.." + transfer.getName());
+        }
+
+        for (Map.Entry<Transfer, Integer> entrySet : transferSet.entrySet()) {
+            Transfer key = entrySet.getKey();
+            Integer value = entrySet.getValue();
+            System.out.println("Transfer is " + key.getName() + " Value is " + value);
         }
 
         return transferSet;
@@ -125,19 +193,15 @@ public class GraphSolver {
     private static int getNumberOfAppearancesInTheRoute(List<NetworkLink> edgeListRemaining, Transfer currentTransfer) {
         int appearances = 0;
         for (NetworkLink edge : edgeListRemaining) {
-            for (Transfer transfer : edge.getTransferList())
-            {
-                if (transfer.equals(currentTransfer))
-                {
+            for (Transfer transfer : edge.getTransferList()) {
+                if (transfer.equals(currentTransfer)) {
                     appearances++;
                     break;
                 }
             }
         }
-        
+
         return appearances;
     }
-    
-    
 
 }
