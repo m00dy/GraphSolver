@@ -82,11 +82,16 @@ public class Transfer {
 	public void setAssignedSlot(int assignedSlot) {
 		this.assignedSlot = assignedSlot;
 	}
-	
-	
-	
-	
-	
-	
+
+    @Override
+    public boolean equals(Object obj) {
+        return  (obj instanceof Transfer) && this.name.equalsIgnoreCase(((Transfer) obj).getName()); 
+    }
+
+    @Override
+    protected Transfer clone()  {
+        Transfer t = new Transfer(name, origin, destination, volumeOfData, completionTime, assignedSlot);
+        return t;
+    }
 
 }
