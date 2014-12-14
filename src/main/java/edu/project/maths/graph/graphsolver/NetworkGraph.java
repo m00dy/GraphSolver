@@ -1,5 +1,6 @@
 package edu.project.maths.graph.graphsolver;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -41,5 +42,22 @@ public class NetworkGraph<V, E extends NetworkLink> extends SimpleGraph {
         List<GraphPath<String, NetworkLink>> paths = kShortestPaths.getPaths(destination);
         return paths;
     }
+
+    ArrayList<Transfer> getTransferListInPath(GraphPath<String, NetworkLink> path) {
+        ArrayList<Transfer> transferList = new ArrayList<Transfer>();
+        
+        for (NetworkLink link : path.getEdgeList())
+        {
+            for(Transfer transfer :link.getTransferList())
+            {
+                if (!transferList.contains(transfer))
+                    transferList.add(transfer);
+            }
+        }
+        
+        return transferList;
+    }
+    
+    
 
 }
