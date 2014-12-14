@@ -6,6 +6,8 @@
 package edu.project.maths.graph.graphsolver;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import org.jgrapht.GraphPath;
 
 /**
@@ -19,6 +21,27 @@ public class Solution {
     ArrayList<Schedule> reschedules;
 
     public Solution() {
+    }
+
+/**
+ *  
+ * @return quality 0 is very good; 10 is bad
+ */
+    public int getQualityOfSolution()
+    {
+        int quality = 0;
+        Set<String> transferSet = new HashSet();
+        
+        for (Schedule schedule : reschedules)
+        {
+            if (!transferSet.contains(schedule.getTransferName()))
+            {
+                transferSet.add(schedule.getTransferName());
+                quality++;
+            }
+        }
+        
+        return quality;
     }
 
     public Transfer getDemand() {
@@ -64,6 +87,45 @@ public class Solution {
         }
         return sb.toString();
 
+    }
+
+    boolean containsTransferReshedule(Transfer transfer) {
+        for (Schedule s : reschedules)
+        {
+            if (s.getTransferName().equalsIgnoreCase(transfer.getName()))
+                return true;
+        }
+        
+        return false;
+    }
+    
+    static boolean isSolutionFeasible(GraphPath<String, NetworkLink> path, ArrayList<Transfer> newTransferList, Transfer demandTransfer) {
+        
+        int bmin = demandTransfer.minimumSlotsRequired();
+        
+        for (NetworkLink link : path.getEdgeList())
+        {
+            int squeezedValue = link.getFreeSlots();
+            
+            for (Transfer transfer: newTransferList)
+            {
+                if (link.getTransferList().contains(transfer))
+                {
+                    squeezedValue += transfer.numberOfSqueezableSlots();
+                }
+            }
+            
+            if (squeezedValue < bmin)
+                return false;
+            
+        }
+        
+        return true;
+    }
+    
+    static int qualtiyOfSolution(ArrayList<Transfer> newTransferList)
+    {
+        return newTransferList.size();
     }
 
 }
