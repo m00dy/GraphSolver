@@ -17,41 +17,52 @@ public class GraphSolver {
         System.out.println("I'm famous");
 
         NetworkGraph<String, NetworkLink> graph = createStringGraph();
-        Transfer t5 = new Transfer("t5", "a", "c", 250, 5, 0);
-        int bmin = t5.minimumSlotsRequired();
+        Transfer demandTransfer = new Transfer("t5", "a", "c", 250, 5, 0);
+        int bmin = demandTransfer.minimumSlotsRequired();
+        System.out.println("Graph: " + graph);
         System.out.println("bmin required: " + bmin);
 
-        DijkstraShortestPath<String, NetworkLink> freeRoute = graph.getCapacitadedShortestPath("a", "c", bmin);
+        DijkstraShortestPath<String, NetworkLink> freeRoute = graph.getCapacitadedShortestPath(demandTransfer.getOrigin(),
+                demandTransfer.getDestination(), bmin);
+        Solution solution = new Solution();
+        solution.setDemand(demandTransfer);
 
         if (freeRoute.getPath() != null) {
+            solution.setPath(freeRoute.getPath());
+            demandTransfer.setAssignedSlot(bmin);
+            solution.setReschedules(null);
             System.out.println("Path for this transfer " + freeRoute.getPath());
             return;
         }
 
-        List<GraphPath<String, NetworkLink>> paths = graph.getKShortestPaths("a", "c");
-        HashMap<Transfer, Integer> solution = null;
+        /*We could not find a solution, now we need to reschedule paths*/
+        List<GraphPath<String, NetworkLink>> paths = graph.getKShortestPaths(demandTransfer.getOrigin(), demandTransfer.getDestination());
+        HashMap<Transfer, Integer> reschedules = null;
 
         System.out.println("K Shortest Paths: " + paths);
         for (GraphPath<String, NetworkLink> path : paths) {
+            solution.setPath(path);
+
             System.out.println("==========================");
             System.out.println("Taking path: " + path);
-            HashMap<Transfer, Integer> partialSolution = new HashMap<Transfer, Integer>();
+            HashMap<Transfer, Integer> partialReschedules = new HashMap<Transfer, Integer>();
 
             List<NetworkLink> edgeList = path.getEdgeList();
             List<NetworkLink> edgeListRemaining = new ArrayList(edgeList);
-            //Collections.copy(edgeListRemaining, edgeList);
-            boolean noSolutionForThisPath = false;
 
             for (NetworkLink link : edgeList) {
-                int squeezedValue = 0;
+                int squeezedValue = link.getFreeSlots();
                 System.out.println("Edge List:  " + edgeListRemaining);
-                if (link.getFreeSlots() < bmin) {
-                    // 1. Generate RCL here 
-                    // 2. then select a transfer at random
-                    // 3. Check if transfer fulfills demand, if not select another at random
-                    // 4. If transfers can be found which fulfils demand add it to the partial solution
-                    // 5. Otherwise there is no solution in this path, try next path
-                    HashMap<Transfer, Integer> candidateSet = getCandidateSetWithQuality(edgeListRemaining, partialSolution, bmin);
+                if (squeezedValue < bmin) {
+                    /*
+                     1. Generate RCL here 
+                     2. then select a transfer at random
+                     3. Check if transfer fulfills demand, if not select another at random 
+                     in addtion to the previously selected
+                     4. If transfers can be found which fulfils demand add it to the partial solution
+                     5. Otherwise there is no solution in this path, try next path
+                     */
+                    HashMap<Transfer, Integer> candidateSet = getCandidateSetWithQuality(edgeListRemaining, partialReschedules, bmin);
                     List<Transfer> rcl = getRCL(candidateSet);
                     List<Transfer> transferSetInThisLink = new ArrayList<Transfer>();
                     Random r = new Random();
@@ -65,11 +76,13 @@ public class GraphSolver {
                     }
 
                     if (squeezedValue >= bmin) {
+                        solution.getDemand().setAssignedSlot(squeezedValue);
                         for (Transfer t : transferSetInThisLink) {
-                            partialSolution.put(t, t.numberOfSqueezableSlots());
+                            partialReschedules.put(t, t.numberOfSqueezableSlots());
                         }
                     } else {
-                        noSolutionForThisPath = true;
+                        solution.getDemand().setAssignedSlot(0);
+                        solution.setPath(null);
                         break;
                     }
 
@@ -78,23 +91,48 @@ public class GraphSolver {
                 edgeListRemaining.remove(link);
             }
 
-            if (!noSolutionForThisPath) {
-                //found solution :D
-                solution = partialSolution;
+            if (solution.getPath() != null) {
+                //found solution, assign it and stop here
+                reschedules = partialReschedules;
+
                 break;
             }
         }
 
-        if (solution != null) {
-            System.out.print("Solution is: {");
+        /*
+         if solution found, calculate the reschedules times and print the solution
+         */
+        if (reschedules != null) {
+            ArrayList<Schedule> reshedulesList = new ArrayList<Schedule>();
 
-            for (Map.Entry<Transfer, Integer> entrySet : solution.entrySet()) {
-                Transfer key = entrySet.getKey();
-                Integer value = entrySet.getValue();
-                System.out.print(" (" + key.getName() + ", " + value + ")");
+            for (Map.Entry<Transfer, Integer> entrySet : reschedules.entrySet()) {
+                Transfer t = entrySet.getKey();
+                Integer squeezedSlots = entrySet.getValue();
+
+                int transferActualTime = Transfer.calculateTimeInterval(t.getVolumeOfData(), t.getAssignedSlot() - squeezedSlots);
+                int demandActualTime = solution.getDemand().getActualCompletionTime();
+
+                if (transferActualTime <= demandActualTime) {
+                    //no need to assing resources, since the transfer finishes early
+                    Schedule s = new Schedule(t.getName(), t.getAssignedSlot() - squeezedSlots, 0, transferActualTime);
+                    reshedulesList.add(s);
+                } else {
+                    // we need to re-assign the resources freed
+                    //no need to assing resources, since the transfer finishes early
+                    Schedule s1 = new Schedule(t.getName(), t.getAssignedSlot() - squeezedSlots, 0, demandActualTime);
+                    int volumeOfDataAfterS1 = Transfer.calculateVolumeOfDataRemaining(t.getAssignedSlot() - squeezedSlots, demandActualTime - 0);
+                    int s2FinishTime = demandActualTime + Transfer.calculateTimeInterval(volumeOfDataAfterS1, t.getAssignedSlot());
+                    Schedule s2 = new Schedule(t.getName(), t.getAssignedSlot(), solution.getDemand().getActualCompletionTime(), s2FinishTime);
+                    reshedulesList.add(s1);
+                    reshedulesList.add(s2);
+
+                }
             }
+            solution.setReschedules(reshedulesList);
 
-            System.out.println("}");
+            System.out.println("========================");
+            System.out.println("Solution: \n---------\n" + solution);
+            System.out.println("========================");
         }
     }
 

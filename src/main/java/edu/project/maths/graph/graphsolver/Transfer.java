@@ -2,95 +2,112 @@ package edu.project.maths.graph.graphsolver;
 
 public class Transfer {
 
-	String name;
-	String origin;
-	String destination;
-	int volumeOfData;
-	int completionTime;
-	int assignedSlot;
+    String name;
+    String origin;
+    String destination;
+    int volumeOfData;
+    int completionTimeCommitted;
+    int assignedSlot;
 
-	
+    public Transfer(String name, String origin, String destination,
+            int volumeOfData, int completionTime, int assignedSlot) {
+        super();
+        this.name = name;
+        this.origin = origin;
+        this.destination = destination;
+        this.volumeOfData = volumeOfData;
+        this.completionTimeCommitted = completionTime;
+        this.assignedSlot = assignedSlot;
+    }
 
-	public Transfer(String name, String origin, String destination,
-			int volumeOfData, int completionTime, int assignedSlot) {
-		super();
-		this.name = name;
-		this.origin = origin;
-		this.destination = destination;
-		this.volumeOfData = volumeOfData;
-		this.completionTime = completionTime;
-		this.assignedSlot = assignedSlot;
-	}
-	
-	public int minimumSlotsRequired(){
-		return (((volumeOfData / completionTime) -1) / NetworkLink.SLOT_SPEED) + 1;
-	}
-	
-	public boolean isSqueezable(){
-		return assignedSlot > this.minimumSlotsRequired();
-	}
-	
-	public int numberOfSqueezableSlots(){
-		return assignedSlot - this.minimumSlotsRequired();
-	}
+    public int minimumSlotsRequired() {
+        return (((volumeOfData / completionTimeCommitted) - 1) / NetworkLink.SLOT_SPEED) + 1;
+    }
 
-	public String getName() {
-		return name;
-	}
+    public static int calculateTimeInterval(int volumeOfData, int assignedSlots) {
+        int actualCompletionTime = 0;
 
-	public void setName(String name) {
-		this.name = name;
-	}
+        if (assignedSlots != 0) {
+            actualCompletionTime = (int) Math.ceil(volumeOfData *1.0 / (assignedSlots * NetworkLink.SLOT_SPEED));
+        }
 
-	
-	public String getOrigin() {
-		return origin;
-	}
+        return actualCompletionTime;
+    }
 
-	public void setOrigin(String origin) {
-		this.origin = origin;
-	}
+    public static int calculateVolumeOfDataRemaining(int assignedSlots, int timeInterval)
+    {
+        return assignedSlots * NetworkLink.SLOT_SPEED * timeInterval;
+    }
+    
+    public int getActualCompletionTime()
+    {
+        return Transfer.calculateTimeInterval(volumeOfData, assignedSlot);
+    }
+    
+    public boolean isSqueezable() {
+        return assignedSlot > this.minimumSlotsRequired();
+    }
 
-	public String getDestination() {
-		return destination;
-	}
+    public int numberOfSqueezableSlots() {
+        return assignedSlot - this.minimumSlotsRequired();
+    }
 
-	public void setDestination(String destination) {
-		this.destination = destination;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public int getVolumeOfData() {
-		return volumeOfData;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public void setVolumeOfData(int volumeOfData) {
-		this.volumeOfData = volumeOfData;
-	}
+    public String getOrigin() {
+        return origin;
+    }
 
-	public int getCompletionTime() {
-		return completionTime;
-	}
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
 
-	public void setCompletionTime(int completionTime) {
-		this.completionTime = completionTime;
-	}
+    public String getDestination() {
+        return destination;
+    }
 
-	public int getAssignedSlot() {
-		return assignedSlot;
-	}
+    public void setDestination(String destination) {
+        this.destination = destination;
+    }
 
-	public void setAssignedSlot(int assignedSlot) {
-		this.assignedSlot = assignedSlot;
-	}
+    public int getVolumeOfData() {
+        return volumeOfData;
+    }
 
-    @Override
-    public boolean equals(Object obj) {
-        return  (obj instanceof Transfer) && this.name.equalsIgnoreCase(((Transfer) obj).getName()); 
+    public void setVolumeOfData(int volumeOfData) {
+        this.volumeOfData = volumeOfData;
+    }
+
+    public int getCompletionTimeCommitted() {
+        return completionTimeCommitted;
+    }
+
+    public void setCompletionTimeCommitted(int completionTime) {
+        this.completionTimeCommitted = completionTime;
+    }
+
+    public int getAssignedSlot() {
+        return assignedSlot;
+    }
+
+    public void setAssignedSlot(int assignedSlot) {
+        this.assignedSlot = assignedSlot;
     }
 
     @Override
-    protected Transfer clone()  {
-        Transfer t = new Transfer(name, origin, destination, volumeOfData, completionTime, assignedSlot);
+    public boolean equals(Object obj) {
+        return (obj instanceof Transfer) && this.name.equalsIgnoreCase(((Transfer) obj).getName());
+    }
+
+    @Override
+    protected Transfer clone() {
+        Transfer t = new Transfer(name, origin, destination, volumeOfData, completionTimeCommitted, assignedSlot);
         return t;
     }
 
