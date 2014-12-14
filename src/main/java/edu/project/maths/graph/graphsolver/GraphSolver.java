@@ -2,35 +2,106 @@ package edu.project.maths.graph.graphsolver;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.DijkstraShortestPath;
 
 public class GraphSolver {
 
-    private static final double alpha = 0.5;
+    private static final double alpha = 0.8;
 
     public static void main(String[] argv) {
 
         System.out.println("I'm famous");
 
         NetworkGraph<String, NetworkLink> graph = createStringGraph();
-        Transfer demandTransfer = new Transfer("t5", "a", "c", 250, 5, 0);
+        Transfer demandTransfer = new Transfer("t0", "a", "c", 250, 15, 0);
         int bmin = demandTransfer.minimumSlotsRequired();
         System.out.println("Graph: " + graph);
         System.out.println("bmin required: " + bmin);
 
-        if (findSolution(graph, demandTransfer, bmin)) return;
+        if (findSolution(graph, demandTransfer, bmin)) {
+            return;
+        }
 
         /*We could not find a solution, now we need to reschedule paths*/
         Solution graspSolution = grasp(graph, demandTransfer);
-        
-        if (graspSolution.getPath() != null)
-        {
+        localSearch(demandTransfer, graspSolution, graph);
+    }
+
+    private static Solution localSearch(Transfer demandTransfer, Solution graspSolution, NetworkGraph<String, NetworkLink> graph) {
+        Solution newSolution = new Solution();
+        newSolution.setDemand(demandTransfer);
+        newSolution.setPath(graspSolution.getPath());
+
+        if (graspSolution.getPath() != null) {
             // Do local search if the grasp found a solution
+            ArrayList<Transfer> transferListInPath = graph.getTransferListInPath(graspSolution.getPath());
+
+            ArrayList<Transfer> transferListInSolution = new ArrayList<Transfer>();
+            ArrayList<Transfer> transferListNotInSolution = new ArrayList<Transfer>();
+            ArrayList<Transfer> newTransferList = new ArrayList<Transfer>(transferListInSolution);
+
+            for (Transfer transfer : transferListInPath) {
+                if (graspSolution.containsTransferReshedule(transfer)) {
+                    transferListInSolution.add(transfer);
+                } else {
+                    transferListNotInSolution.add(transfer);
+                }
+            }
+
+            for (Transfer transfer : transferListInSolution) {
+                newTransferList.remove(transfer);
+
+                if (Solution.isSolutionFeasible(graspSolution.getPath(), newTransferList, demandTransfer)
+                        && graspSolution.getQualityOfSolution() >= Solution.qualtiyOfSolution(newTransferList)) {
+                    //we found a good solution :D
+                    ArrayList<Schedule> newResehedules = calculateReshedules(newTransferList, demandTransfer);
+                    newSolution.setReschedules(newResehedules);
+                    System.out.println("Solution after local search: \n" + newSolution);
+                    return newSolution;
+//                    break;
+                }
+
+                newTransferList.add(transfer);
+            }
+
+            for (Transfer incomingTransfer : transferListNotInSolution) {
+                newTransferList.add(incomingTransfer);
+
+                for (int i = 0; i < transferListInSolution.size() - 1; i++) {
+                    Transfer removedTransfer1 = transferListInSolution.get(i);
+                    newTransferList.remove(removedTransfer1);
+                    
+                    for (int j = i; j < transferListInSolution.size(); j++) {
+                        Transfer removedTransfer2 = transferListInSolution.get(j);
+                        newTransferList.remove(removedTransfer2);
+
+                        if (Solution.isSolutionFeasible(graspSolution.getPath(), newTransferList, demandTransfer)
+                                && graspSolution.getQualityOfSolution() >= Solution.qualtiyOfSolution(newTransferList)) {
+                            //we found a good solution :D
+                            ArrayList<Schedule> newResehedules = calculateReshedules(newTransferList, demandTransfer);
+                            newSolution.setReschedules(newResehedules);
+                     System.out.println("Solution after local search2: \n" + newSolution);
+                           return newSolution;
+//                    break;
+                        }
+
+                        newTransferList.add(removedTransfer2);
+                    }
+                    newTransferList.add(removedTransfer1);
+                }
+
+                newTransferList.remove(incomingTransfer);
+            }
+
         }
+
+        return newSolution;
     }
 
     private static boolean findSolution(NetworkGraph<String, NetworkLink> graph, Transfer demandTransfer, int bmin) {
@@ -38,12 +109,12 @@ public class GraphSolver {
                 demandTransfer.getDestination(), bmin);
         Solution solution = new Solution();
         solution.setDemand(demandTransfer);
-        
+
         if (freeRoute.getPath() != null) {
             solution.setPath(freeRoute.getPath());
             demandTransfer.setAssignedSlot(bmin);
             solution.setReschedules(null);
-            System.out.println("Path for this transfer " + freeRoute.getPath());
+            System.out.println("Found Capacitated Path" + freeRoute.getPath());
             return true;
         }
         return false;
@@ -55,7 +126,8 @@ public class GraphSolver {
         solution.setDemand(demandTransfer);
 
         List<GraphPath<String, NetworkLink>> paths = graph.getKShortestPaths(demandTransfer.getOrigin(), demandTransfer.getDestination());
-        HashMap<Transfer, Integer> reschedules = null;
+//        HashMap<Transfer, Integer> reschedules = null;
+        ArrayList<Transfer> reschedules = null;
 
         System.out.println("K Shortest Paths: " + paths);
         for (GraphPath<String, NetworkLink> path : paths) {
@@ -63,7 +135,8 @@ public class GraphSolver {
 
             System.out.println("==========================");
             System.out.println("Taking path: " + path);
-            HashMap<Transfer, Integer> partialReschedules = new HashMap<Transfer, Integer>();
+//            HashMap<Transfer, Integer> partialReschedules = new HashMap<Transfer, Integer>();
+            ArrayList<Transfer> partialRescheduleList = new ArrayList<Transfer>();
 
             List<NetworkLink> edgeList = path.getEdgeList();
             List<NetworkLink> edgeListRemaining = new ArrayList(edgeList);
@@ -80,7 +153,7 @@ public class GraphSolver {
                      4. If transfers can be found which fulfils demand add it to the partial solution
                      5. Otherwise there is no solution in this path, try next path
                      */
-                    HashMap<Transfer, Integer> candidateSet = getCandidateSetWithQuality(edgeListRemaining, partialReschedules, bmin);
+                    HashMap<Transfer, Integer> candidateSet = getCandidateSetWithQuality(edgeListRemaining, partialRescheduleList, bmin);
                     List<Transfer> rcl = getRCL(candidateSet);
                     List<Transfer> transferSetInThisLink = new ArrayList<Transfer>();
                     Random r = new Random();
@@ -91,13 +164,23 @@ public class GraphSolver {
                         squeezedValue += luckyTransfer.numberOfSqueezableSlots();
                         rcl.remove(luckyTransfer);
                         transferSetInThisLink.add(luckyTransfer);
+                        System.out.println("Selecting Transfer in the solution: " + luckyTransfer.getName() + luckyTransfer.numberOfSqueezableSlots());
                     }
 
                     if (squeezedValue >= bmin) {
-                        solution.getDemand().setAssignedSlot(squeezedValue);
-                        for (Transfer t : transferSetInThisLink) {
-                            partialReschedules.put(t, t.numberOfSqueezableSlots());
+                        if (solution.getDemand().getAssignedSlot() == 0 || solution.getDemand().getAssignedSlot() > squeezedValue) {
+                            solution.getDemand().setAssignedSlot(squeezedValue);
                         }
+
+//                        partialRescheduleList.add(transferSetInThisLink);
+                        partialRescheduleList.addAll(transferSetInThisLink);
+                        Set s = new HashSet(partialRescheduleList);
+                        partialRescheduleList.clear();
+                        partialRescheduleList.addAll(s);
+                                
+//                        for (Transfer t : transferSetInThisLink) {
+//                            partialReschedules.put(t, t.numberOfSqueezableSlots());
+//                        }
                     } else {
                         solution.getDemand().setAssignedSlot(0);
                         solution.setPath(null);
@@ -111,7 +194,7 @@ public class GraphSolver {
 
             if (solution.getPath() != null) {
                 //found solution, assign it and stop here
-                reschedules = partialReschedules;
+                reschedules = partialRescheduleList;
 
                 break;
             }
@@ -125,18 +208,18 @@ public class GraphSolver {
             solution.setReschedules(reshedulesList);
 
             System.out.println("========================");
-            System.out.println("Solution: \n---------\n" + solution);
+            System.out.println("Grasp Solution: \n---------\n" + solution);
             System.out.println("========================");
         }
 
         return solution;
     }
 
-    private static ArrayList<Schedule> calculateReshedules(HashMap<Transfer, Integer> reschedules, Transfer demandTransfer) {
+    private static ArrayList<Schedule> calculateReshedules(ArrayList<Transfer> reschedules, Transfer demandTransfer) {
         ArrayList<Schedule> reshedulesList = new ArrayList<Schedule>();
-        for (Map.Entry<Transfer, Integer> entrySet : reschedules.entrySet()) {
-            Transfer t = entrySet.getKey();
-            Integer squeezedSlots = entrySet.getValue();
+        for (Transfer t : reschedules) {
+//            Transfer t = entrySet.getKey();
+            Integer squeezedSlots = t.numberOfSqueezableSlots();
 
             int transferActualTime = Transfer.calculateTimeInterval(t.getVolumeOfData(), t.getAssignedSlot() - squeezedSlots);
             int demandActualTime = demandTransfer.getActualCompletionTime();
@@ -189,15 +272,20 @@ public class GraphSolver {
 
         Transfer t3 = new Transfer("t3", "a", "d", 40, 5, 6);
 
-        Transfer t4 = new Transfer("t4", "b", "d", 40, 20, 2);
+        Transfer t4 = new Transfer("t4", "b", "d", 240, 20, 6);
 
+        Transfer t5 = new Transfer("t5", "a", "c", 280, 15 , 4);
+
+                
         ((NetworkLink) g.getEdge("a", "d")).addTransfer(t1);
         ((NetworkLink) g.getEdge("a", "d")).addTransfer(t2);
 
         ((NetworkLink) g.getEdge("a", "b")).addTransfer(t3);
+        ((NetworkLink) g.getEdge("a", "b")).addTransfer(t5);
 
         ((NetworkLink) g.getEdge("b", "c")).addTransfer(t4);
-
+        ((NetworkLink) g.getEdge("b", "c")).addTransfer(t5);
+        
         ((NetworkLink) g.getEdge("c", "d")).addTransfer(t1);
         ((NetworkLink) g.getEdge("c", "d")).addTransfer(t2);
         ((NetworkLink) g.getEdge("c", "d")).addTransfer(t4);
@@ -236,11 +324,18 @@ public class GraphSolver {
             }
 
         }
+        System.out.print("RCL: {");
+
+        for (Transfer t : returnList) {
+            System.out.print(t.getName() + ", " );
+        }
+
+        System.out.println("}");
 
         return returnList;
     }
 
-    private static HashMap<Transfer, Integer> getCandidateSetWithQuality(List<NetworkLink> edgeListRemaining, HashMap<Transfer, Integer> partialSolution, int bmin) {
+    private static HashMap<Transfer, Integer> getCandidateSetWithQuality(List<NetworkLink> edgeListRemaining, ArrayList<Transfer> partialRescheduleList, int bmin) {
 
         HashMap<Transfer, Integer> candidateSet = new HashMap<Transfer, Integer>();
 
@@ -250,7 +345,7 @@ public class GraphSolver {
 
         for (Transfer transfer : transferList) {
 
-            if (partialSolution.containsKey(transfer)) {
+            if (partialRescheduleList.contains(transfer)) {
                 continue;
             }
 
