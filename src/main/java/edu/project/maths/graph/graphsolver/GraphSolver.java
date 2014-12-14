@@ -135,7 +135,7 @@ public class GraphSolver {
 
             System.out.println("==========================");
             System.out.println("Taking path: " + path);
-//            HashMap<Transfer, Integer> partialReschedules = new HashMap<Transfer, Integer>();
+//            HashMap<Transfer, Integer> partialReschedules = new HashMap<Transfer, Integer>() ; 
             ArrayList<Transfer> partialRescheduleList = new ArrayList<Transfer>();
 
             List<NetworkLink> edgeList = path.getEdgeList();
