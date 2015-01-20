@@ -47,10 +47,10 @@ public class GraphSolver {
         System.out.println("****BRKGA End Time: " + brkgaEndTime.getTime());
         
         
-        System.out.println("******\n******\n******\nResults: "
-                + "\nGRASP: " + (graspEndTime.getTime() - graspStartTime.getTime())
-                + "\nLocal Search: " + (localSearchEndTime.getTime() - graspEndTime.getTime())
-                + "\nBRKGA: " + (brkgaEndTime.getTime() - localSearchEndTime.getTime()));
+        System.out.println("======\n======\n======\nResults: "
+                + "\nGRASP: " + (graspEndTime.getTime() - graspStartTime.getTime() + " ms")
+                + "\nLocal Search: " + (localSearchEndTime.getTime() - graspEndTime.getTime() + " ms")
+                + "\nBRKGA: " + (brkgaEndTime.getTime() - localSearchEndTime.getTime()) + " ms");
     }
 
     private static boolean findSolution(NetworkGraph<String, NetworkLink> graph, Transfer demandTransfer, int bmin) {

@@ -274,6 +274,11 @@ public class GraspSolver {
             }
 
         }
+        
+        if (newSolution.getReschedules() == null )
+        {
+            System.out.println("Local search could not find a better/equivalent solution");
+        }
 
         return newSolution;
     }
