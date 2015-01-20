@@ -1,0 +1,21 @@
+{
+    "name": "first_case",
+    "vertices" : ["a", "b", "c", "d", "e"],
+    "edges" : [
+         {"src": "a","dst": "b","transfers":["t3","t5"]}
+        ,{"src": "a","dst":  "d","transfers":["t1","t2"]}
+        ,{"src": "d","dst": "b","transfers":["t3"]}
+        ,{"src": "b","dst": "c","transfers":["t4","t5"]}
+        ,{"src": "c","dst": "d","transfers":["t1","t2","t4"]}
+        ],
+    
+    "transfers" : [
+                   {"name": "t1", "origin": "a", "destination": "c", "volumeOfData": 40, "completionTime": 5, "assignedSlot":5}
+                 , {"name": "t2", "origin": "c", "destination": "a", "volumeOfData": 40, "completionTime": 15, "assignedSlot":3}
+                 , {"name": "t3", "origin": "a", "destination": "d", "volumeOfData": 40, "completionTime": 5, "assignedSlot":6}
+                 , {"name": "t4", "origin": "b", "destination": "d", "volumeOfData": 240, "completionTime": 20, "assignedSlot":6}
+                 , {"name": "t5", "origin": "a", "destination": "c", "volumeOfData": 280, "completionTime": 15, "assignedSlot":4}
+    ]
+} 
+
+
