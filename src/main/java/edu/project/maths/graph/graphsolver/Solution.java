@@ -23,24 +23,21 @@ public class Solution {
     public Solution() {
     }
 
-/**
- *  
- * @return quality 0 is very good; 10 is bad
- */
-    public int getQualityOfSolution()
-    {
+    /**
+     *
+     * @return quality 0 is very good; 10 is bad
+     */
+    public int getQualityOfSolution() {
         int quality = 0;
         Set<String> transferSet = new HashSet();
-        
-        for (Schedule schedule : reschedules)
-        {
-            if (!transferSet.contains(schedule.getTransferName()))
-            {
+
+        for (Schedule schedule : reschedules) {
+            if (!transferSet.contains(schedule.getTransferName())) {
                 transferSet.add(schedule.getTransferName());
                 quality++;
             }
         }
-        
+
         return quality;
     }
 
@@ -89,43 +86,61 @@ public class Solution {
 
     }
 
-    boolean containsTransferReshedule(Transfer transfer) {
-        for (Schedule s : reschedules)
-        {
-            if (s.getTransferName().equalsIgnoreCase(transfer.getName()))
+    public boolean containsTransferReshedule(Transfer transfer) {
+        for (Schedule s : reschedules) {
+            if (s.getTransferName().equalsIgnoreCase(transfer.getName())) {
                 return true;
+            }
         }
-        
+
         return false;
     }
-    
-    static boolean isSolutionFeasible(GraphPath<String, NetworkLink> path, ArrayList<Transfer> newTransferList, Transfer demandTransfer) {
-        
+
+    public static boolean isSolutionFeasible(GraphPath<String, NetworkLink> path, ArrayList<Transfer> newTransferList, Transfer demandTransfer) {
+
         int bmin = demandTransfer.minimumSlotsRequired();
-        
-        for (NetworkLink link : path.getEdgeList())
-        {
+
+        for (NetworkLink link : path.getEdgeList()) {
             int squeezedValue = link.getFreeSlots();
-            
-            for (Transfer transfer: newTransferList)
-            {
-                if (link.getTransferList().contains(transfer))
-                {
+
+            for (Transfer transfer : newTransferList) {
+                if (link.getTransferList().contains(transfer)) {
                     squeezedValue += transfer.numberOfSqueezableSlots();
                 }
             }
-            
-            if (squeezedValue < bmin)
+
+            if (squeezedValue < bmin) {
                 return false;
-            
+            }
+
         }
-        
+
         return true;
     }
-    
-    static int qualtiyOfSolution(ArrayList<Transfer> newTransferList)
-    {
+
+    public static int qualtiyOfSolution(ArrayList<Transfer> newTransferList) {
         return newTransferList.size();
+    }
+
+    public static ArrayList<Schedule> calculateReshedules(ArrayList<Transfer> transfersToBeRescheduled, Transfer demandTransfer) {
+        ArrayList<Schedule> reshedulesList = new ArrayList<Schedule>();
+        for (Transfer t : transfersToBeRescheduled) {
+            Integer squeezedSlots = t.numberOfSqueezableSlots();
+            int transferActualTime = Transfer.calculateTimeInterval(t.getVolumeOfData(), t.getAssignedSlot() - squeezedSlots);
+            int demandActualTime = demandTransfer.getActualCompletionTime();
+            if (transferActualTime <= demandActualTime) {
+                Schedule s = new Schedule(t.getName(), t.getAssignedSlot() - squeezedSlots, 0, transferActualTime);
+                reshedulesList.add(s);
+            } else {
+                Schedule s1 = new Schedule(t.getName(), t.getAssignedSlot() - squeezedSlots, 0, demandActualTime);
+                int volumeOfDataAfterS1 = Transfer.calculateVolumeOfDataRemaining(t.getAssignedSlot() - squeezedSlots, demandActualTime - 0);
+                int s2FinishTime = demandActualTime + Transfer.calculateTimeInterval(volumeOfDataAfterS1, t.getAssignedSlot());
+                Schedule s2 = new Schedule(t.getName(), t.getAssignedSlot(), demandTransfer.getActualCompletionTime(), s2FinishTime);
+                reshedulesList.add(s1);
+                reshedulesList.add(s2);
+            }
+        }
+        return reshedulesList;
     }
 
 }

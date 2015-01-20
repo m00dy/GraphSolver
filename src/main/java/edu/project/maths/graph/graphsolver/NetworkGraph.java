@@ -12,6 +12,19 @@ import org.jgrapht.graph.SimpleGraph;
 
 public class NetworkGraph<V, E extends NetworkLink> extends SimpleGraph {
 
+    public static int getNumberOfAppearancesInTheRoute(List<NetworkLink> edgeListRemaining, Transfer currentTransfer) {
+        int appearances = 0;
+        for (NetworkLink edge : edgeListRemaining) {
+            for (Transfer transfer : edge.getTransferList()) {
+                if (transfer.equals(currentTransfer)) {
+                    appearances++;
+                    break;
+                }
+            }
+        }
+        return appearances;
+    }
+
     public NetworkGraph(Class edgeClass) {
         super(edgeClass);
         // TODO Auto-generated constructor stub
@@ -37,13 +50,13 @@ public class NetworkGraph<V, E extends NetworkLink> extends SimpleGraph {
         return path;
     }
 
-    List<GraphPath<String, NetworkLink>> getKShortestPaths(String orign, String destination) {
+    public List<GraphPath<String, NetworkLink>> getKShortestPaths(String orign, String destination) {
         KShortestPaths<String, NetworkLink> kShortestPaths = new KShortestPaths<String, NetworkLink>(this, orign, 5);
         List<GraphPath<String, NetworkLink>> paths = kShortestPaths.getPaths(destination);
         return paths;
     }
 
-    ArrayList<Transfer> getTransferListInPath(GraphPath<String, NetworkLink> path) {
+    public ArrayList<Transfer> getTransferListInPath(GraphPath<String, NetworkLink> path) {
         ArrayList<Transfer> transferList = new ArrayList<Transfer>();
         
         for (NetworkLink link : path.getEdgeList())

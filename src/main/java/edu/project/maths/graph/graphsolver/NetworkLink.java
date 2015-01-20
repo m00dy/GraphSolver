@@ -34,6 +34,20 @@ public class NetworkLink extends DefaultEdge {
     public void setTransferList(ArrayList<Transfer> transferList) {
         this.transferList = transferList;
     }
+    
+    public boolean containsTransfer(Transfer t)
+    {
+        boolean contains = false;
+        
+        for (Transfer transfer : transferList)
+            if (t.equals(transfer))
+            {
+                contains = true;
+                break;
+            }
+        
+        return contains;
+    }
 
     @Override
     public NetworkLink clone() {
