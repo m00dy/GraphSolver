@@ -26,7 +26,7 @@ import org.jgrapht.GraphPath;
  */
 public class GraspSolver {
 
-    private static final double alpha = 0.8;
+    private static final double alpha = 0.5;
 
     public static Solution grasp(NetworkGraph<String, NetworkLink> graph, Transfer demandTransfer) {
         int bmin = demandTransfer.minimumSlotsRequired();
