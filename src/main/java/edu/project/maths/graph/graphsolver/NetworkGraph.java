@@ -56,7 +56,11 @@ public class NetworkGraph<V, E extends NetworkLink> extends SimpleGraph {
         return paths;
     }
 
+<<<<<<< HEAD
     public ArrayList<Transfer> getTransferListInPath(GraphPath<String, NetworkLink> path) {
+=======
+    ArrayList<Transfer> getTransferListInPath(GraphPath<String, NetworkLink> path) {
+>>>>>>> origin/master
         ArrayList<Transfer> transferList = new ArrayList<Transfer>();
         
         for (NetworkLink link : path.getEdgeList())

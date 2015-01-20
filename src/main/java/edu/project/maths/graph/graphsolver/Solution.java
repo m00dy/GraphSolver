@@ -23,6 +23,7 @@ public class Solution {
     public Solution() {
     }
 
+<<<<<<< HEAD
     /**
      *
      * @return quality 0 is very good; 10 is bad
@@ -38,6 +39,26 @@ public class Solution {
             }
         }
 
+=======
+/**
+ *  
+ * @return quality 0 is very good; 10 is bad
+ */
+    public int getQualityOfSolution()
+    {
+        int quality = 0;
+        Set<String> transferSet = new HashSet();
+        
+        for (Schedule schedule : reschedules)
+        {
+            if (!transferSet.contains(schedule.getTransferName()))
+            {
+                transferSet.add(schedule.getTransferName());
+                quality++;
+            }
+        }
+        
+>>>>>>> origin/master
         return quality;
     }
 
@@ -86,6 +107,7 @@ public class Solution {
 
     }
 
+<<<<<<< HEAD
     public boolean containsTransferReshedule(Transfer transfer) {
         for (Schedule s : reschedules) {
             if (s.getTransferName().equalsIgnoreCase(transfer.getName())) {
@@ -141,6 +163,45 @@ public class Solution {
             }
         }
         return reshedulesList;
+=======
+    boolean containsTransferReshedule(Transfer transfer) {
+        for (Schedule s : reschedules)
+        {
+            if (s.getTransferName().equalsIgnoreCase(transfer.getName()))
+                return true;
+        }
+        
+        return false;
+    }
+    
+    static boolean isSolutionFeasible(GraphPath<String, NetworkLink> path, ArrayList<Transfer> newTransferList, Transfer demandTransfer) {
+        
+        int bmin = demandTransfer.minimumSlotsRequired();
+        
+        for (NetworkLink link : path.getEdgeList())
+        {
+            int squeezedValue = link.getFreeSlots();
+            
+            for (Transfer transfer: newTransferList)
+            {
+                if (link.getTransferList().contains(transfer))
+                {
+                    squeezedValue += transfer.numberOfSqueezableSlots();
+                }
+            }
+            
+            if (squeezedValue < bmin)
+                return false;
+            
+        }
+        
+        return true;
+    }
+    
+    static int qualtiyOfSolution(ArrayList<Transfer> newTransferList)
+    {
+        return newTransferList.size();
+>>>>>>> origin/master
     }
 
 }
